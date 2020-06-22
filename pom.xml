@@ -1,0 +1,462 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  
+  	<!-- imagej parent project -->
+  	
+  	<parent>
+		<groupId>org.scijava</groupId>
+		<artifactId>pom-scijava</artifactId>
+		<version>27.0.1</version>
+		<!-- <relativePath>lib/scijava-pom.xml</relativePath> -->
+	</parent>
+	
+	
+  <!-- ANNOTATORJ -->
+  <groupId>org.biomag</groupId>
+  <artifactId>annotator_Project</artifactId>
+  <version>0.0.2-SNAPSHOT</version>
+  <packaging>jar</packaging>
+  
+  <name>annotator_Project</name>
+  <!-- <url>http://maven.apache.org</url> -->
+  
+  <!-- according to imageJ example plugin project we need these elements too -->
+	<description>AnnotatorJ: an ImageJ plugin. Annotation tool for general purposes with export options.</description>
+	<url>https://github.com/spreka/annotatorj</url>
+	<inceptionYear>2019</inceptionYear>
+	<organization>
+		<name>BIOMAG</name>
+		<!-- <url></url> -->
+	</organization>
+	<licenses>
+		<license>
+			<name> </name>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+	<developers>
+		<developer>
+			<id>spreka</id>
+			<name>Réka Hollandi</name>
+			<url> </url>
+			<roles>
+				<role>lead</role>
+				<role>developer</role>
+				<role>debugger</role>
+				<role>reviewer</role>
+				<role>support</role>
+				<role>maintainer</role>
+			</roles>
+		</developer>
+	</developers>
+	<contributors>
+		<contributor>
+			<name>None</name>
+			<url>None</url>
+			<roles><role>support</role></roles>
+			<properties><id>None</id></properties>
+		</contributor>
+	</contributors>
+
+	<mailingLists>
+		<mailingList>
+			<name>None</name>
+			<archive>None</archive>
+		</mailingList>
+	</mailingLists>
+
+	<scm>
+		<connection>scm:git:git://github.com/spreka/annotatorj</connection>
+		<developerConnection>scm:git:git@github.com/spreka/annotatorj</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/spreka/annotatorj</url>
+	</scm>
+	<issueManagement>
+		<system>None</system>
+	<!-- 
+		<system>GitHub Issues</system>
+		<url>https://github.com/imagej/example-legacy-plugin/issues</url>
+	 -->
+	</issueManagement>
+	<ciManagement>
+		<system>None</system>
+	</ciManagement>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- according to imageJ example plugin project we need these elements too -->
+    <package-name>org.biomag.annotatorProject</package-name>
+	<main-class>org.biomag.annotatorProject.App</main-class> <!-- .App originally -->
+	<license.licenseName>GNU GPL-v3</license.licenseName>
+	<license.copyrightOwners>Réka Hollandi</license.copyrightOwners>
+	
+
+	<!-- install the plugin to ImageJ/FIJI: -->
+	<!-- <imagej.app.directory>D:\ImageJ\ImageJ</imagej.app.directory> -->
+	<!-- <scijava.app.directory>d:\FIJI\Fiji.app\</scijava.app.directory> -->
+	
+	<!-- Modified for using SNAPSHOT versions -->
+	 <!-- 
+	<dl4j.version>1.0.0-SNAPSHOT</dl4j.version>
+	<nd4j.version>1.0.0-SNAPSHOT</nd4j.version>
+	 -->
+	 
+	<!-- Modified for using a fix version --> <!-- <dl4j.version>1.0.0-beta5</dl4j.version> -->
+	<dl4j.version>1.0.0-beta7</dl4j.version> <!-- 1.0.0-beta6 -->
+	<nd4j.version>1.0.0-beta7</nd4j.version>
+	
+	<!-- fixed versions due to copy dependencies issue -->
+	<openblas.version>0.3.9</openblas.version> <!-- 0.3.6-1.5.1 --> <!-- 0.3.7 -->
+	<hdf5.version>1.12.0</hdf5.version> <!-- 1.10.5-1.5.1 --> <!-- 1.10.5 -->
+	<javacpp.version>1.5.3</javacpp.version> <!-- 1.5.1 --> <!-- 1.5.2 -->
+	<opencv.version>4.3.0</opencv.version>
+	
+  </properties>
+  
+  
+  <!--repositories -->
+	<!-- Modified for using SNAPSHOT versions - added repositories section -->
+    <repositories>
+        <repository>
+            <id>snapshots-repo</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>  <!-- Optional, update daily -->
+            </snapshots>
+        </repository>
+    </repositories>
+	
+  
+  
+  
+  <!-- DEPENDENCIES -->
+  <dependencies>
+    
+    <!-- HDF5 -->
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>hdf5-platform</artifactId>
+      <version>${hdf5.version}-${javacpp.version}</version>
+    </dependency>
+    
+  	<!-- JUNIT -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+    </dependency>
+    
+    <!-- DL4J, ND4J dependencies -->
+    <dependency>
+    	<groupId>org.deeplearning4j</groupId>
+    	<artifactId>deeplearning4j-core</artifactId>
+    	<version>${dl4j.version}</version>
+    </dependency>
+
+    <dependency>
+    	<groupId>org.nd4j</groupId>
+    	<!-- <artifactId>nd4j-native</artifactId> --><!-- for CPU only on current OS-->
+    	<artifactId>nd4j-native-platform</artifactId><!-- for CPU + all OS jars--> <!-- <artifactId>nd4j-native-platform</artifactId> -->
+    	<version>${nd4j.version}</version>
+    	<!-- <artifactId>nd4j-cuda-9.2-platform</artifactId> --><!-- for GPU -->
+    	<!-- <version>${nd4j.version}</version> -->
+    </dependency>
+    <!-- 
+    <dependency>
+		<groupId>org.deeplearning4j</groupId>
+		<artifactId>deeplearning4j-cuda-9.2</artifactId>
+		<version>1.0.0-beta4</version>
+	</dependency>
+	 -->
+    
+    <dependency>
+    	<groupId>org.datavec</groupId>
+    	<artifactId>datavec-api</artifactId>
+    	<version>${dl4j.version}</version>
+    </dependency>
+    
+	<!-- additional dependencies -->
+    <dependency>
+    	<groupId>org.bytedeco</groupId>
+    	<artifactId>javacpp</artifactId>
+    	<version>${javacpp.version}</version> <!-- <version>1.5.1</version> -->
+    </dependency>
+    <dependency>
+    	<groupId>org.slf4j</groupId>
+    	<artifactId>slf4j-api</artifactId>
+    	<version>1.7.27</version>
+    </dependency>
+    <dependency>
+    	<groupId>org.slf4j</groupId>
+    	<artifactId>slf4j-nop</artifactId>
+    	<version>1.7.27</version>
+    </dependency>
+    
+    <dependency>
+    	<groupId>org.bytedeco</groupId> <!-- <groupId>org.bytedeco.javacpp-presets</groupId> -->
+    	<artifactId>openblas</artifactId>
+    	<version>${openblas.version}-${javacpp.version}</version> <!-- <version>0.3.6-1.5.1</version> --> <!-- <version>0.3.5-1.4.4</version> --> <!-- this doesnt exist-->
+    </dependency>
+    
+    <dependency>
+    	<groupId>org.slf4j</groupId>
+    	<artifactId>log4j-over-slf4j</artifactId>
+    	<version>1.7.27</version>
+    </dependency>
+    <dependency>
+    	<groupId>org.bytedeco.javacpp-presets</groupId>
+    	<artifactId>cuda</artifactId>
+    	<version>9.0-7.0-1.4.1</version>
+    </dependency>
+    <dependency>
+    	<groupId>org.nd4j</groupId>
+    	<artifactId>jackson</artifactId>
+    	<version>${nd4j.version}</version>
+    </dependency>
+    
+    <dependency>
+    	<groupId>org.apache.commons</groupId>
+    	<artifactId>commons-lang3</artifactId>
+    	<version>3.9</version>
+    </dependency>
+    <dependency>
+    	<groupId>org.nd4j</groupId>
+    	<artifactId>nd4j-api</artifactId>
+    	<version>${nd4j.version}</version>
+    </dependency>
+    
+    
+    <!-- nd4j shade dependecy -->
+    <!-- 
+    <dependency>
+  		<groupId>org.nd4j</groupId>
+  		<artifactId>nd4j-shade</artifactId>
+ 		<version>${nd4j.version}</version>
+	</dependency>
+	 -->
+    
+    <!-- ImageJ dependencies -->
+    <!-- 
+    <dependency>
+    	<groupId>net.imagej</groupId>
+    	<artifactId>pom-imagej</artifactId>
+    	<version>17.0.0</version>
+    	<type>pom</type>
+    	<exclusions>
+    		<exclusion>
+    			<groupId>io.scif</groupId>
+    			<artifactId>scifio-hdf5</artifactId>
+    		</exclusion>
+    		<exclusion>
+    			<groupId>sc.fiji</groupId>
+        		<artifactId>HDF5_Vibez</artifactId>
+    		</exclusion>
+    		<exclusion>
+    			<groupId>cisd</groupId>
+        		<artifactId>jhdf5</artifactId>
+    		</exclusion>
+    	</exclusions>
+    </dependency>
+     -->
+    <dependency>
+    	<groupId>net.imagej</groupId>
+    	<artifactId>ij</artifactId>
+    	<version>1.52v</version> <!-- 1.52p -->
+    	<exclusions>
+    		<exclusion>
+    			<groupId>io.scif</groupId>
+    			<artifactId>scifio-hdf5</artifactId>
+    		</exclusion>
+    		<exclusion>
+    			<groupId>sc.fiji</groupId>
+        		<artifactId>HDF5_Vibez</artifactId>
+    		</exclusion>
+    		<exclusion>
+    			<groupId>cisd</groupId>
+        		<artifactId>jhdf5</artifactId>
+    		</exclusion>
+    	</exclusions>
+    </dependency>
+    
+    
+    <!-- matlab active contour dependencies -->
+    <dependency>
+    	<groupId>com.mathworks.toolbox</groupId>
+    	<artifactId>javabuilder</artifactId>
+    	<version>9.2.0.538062</version>
+    	<type>jar</type>
+    	<!-- <file></file> -->
+    </dependency>
+    <!-- 
+    <dependency>
+    	<groupId>com.mathworks.fileexchange</groupId>
+    	<artifactId>runSnake2D</artifactId>
+    	<version>1.0</version>
+    	<type>jar</type>
+    </dependency>
+     -->
+    <dependency>
+    	<groupId>com.mathworks</groupId>
+    	<artifactId>runAC</artifactId>
+    	<version>1.0</version>
+    	<type>jar</type>
+    	<!-- <file></file> -->
+    </dependency>
+  </dependencies>
+  
+  
+  <build>
+  	<plugins>
+  		<!-- 
+  		<plugin>
+  			<groupId>org.apache.maven.plugins</groupId>
+  			<artifactId>maven-shade-plugin</artifactId>
+  			<version>3.2.1</version>
+  			 <executions>
+  			  -->
+      			<!-- Run shade goal on package phase -->
+      			<!-- 
+      			<execution>
+        			<phase>package</phase>
+        			<goals>
+          				<goal>shade</goal>
+        			</goals>
+        			<configuration>
+          				<transformers>
+          				 -->
+            				<!-- add Main-Class to manifest file -->
+            				<!-- 
+            				<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+              					<mainClass>com.mysite.annotatorProject.App</mainClass>
+            				</transformer>
+          				</transformers>
+              			
+        			</configuration>
+      			</execution>
+    		</executions>
+  		</plugin>
+  		 -->
+  		 
+  		 
+  	  <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+        <configuration>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+  	
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.1.1</version>
+        <executions>
+        <!-- copy all dependencies to a separate build folder to create release versions -->
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/build</outputDirectory>
+              <overWriteReleases>false</overWriteReleases>
+              <overWriteSnapshots>false</overWriteSnapshots>
+              <overWriteIfNewer>true</overWriteIfNewer>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      
+      
+      <plugin>
+            <artifactId>maven-resources-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+            	<!-- hardcoding the copy of nd4j dependency jars to the fiji install folder-->
+                <execution>
+                    <id>copy-resource-one</id>
+                    <phase>install</phase>
+                    <goals>
+                        <goal>copy-resources</goal>
+                    </goals>
+
+                    <configuration>
+                        <outputDirectory>${scijava.app.directory}/jars</outputDirectory>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}/build</directory>
+                                <includes>
+                                	<!-- nd4j backend -->
+                                	<include>nd4j-native-${nd4j.version}.jar</include>
+                                	<!-- hdf5 -->
+                                    <include>hdf5-${hdf5.version}-${javacpp.version}.jar</include>
+                                    <!-- openblas -->
+                                    <include>openblas-${openblas.version}-${javacpp.version}.jar</include>
+                                    <!-- guava -->
+                                    <include>guava-${nd4j.version}.jar</include>
+                                    <!-- javacpp -->
+                                    <include>javacpp-${javacpp.version}.jar</include>
+                                    <!-- opencv -->
+                                    <include>opencv-${opencv.version}-${javacpp.version}.jar</include>
+                                </includes>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                
+                <!-- copy the plugin's jar to the build folder to create the stand-alone version -->
+                <execution>
+                    <id>copy-resource-standalone1</id>
+                    <phase>install</phase>
+                    <goals>
+                        <goal>copy-resources</goal>
+                    </goals>
+                    <configuration>
+                        <outputDirectory>${project.build.directory}/build</outputDirectory>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes>
+                                	<!-- this plugin -->
+                                    <include>${project.artifactId}-${project.version}.jar</include>
+                                </includes>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+                <execution>
+                    <id>copy-resource-standalone2</id>
+                    <phase>install</phase>
+                    <goals>
+                        <goal>copy-resources</goal>
+                    </goals>
+                    <configuration>
+                        <outputDirectory>${project.build.directory}/build/plugins</outputDirectory>
+                        <resources>
+                            <resource>
+                                <directory>${project.build.directory}</directory>
+                                <includes>
+                                	<!-- this plugin -->
+                                    <include>${project.artifactId}-${project.version}.jar</include>
+                                </includes>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+           </executions>
+        </plugin>
+      
+  	</plugins>
+  </build>
+  
+</project>

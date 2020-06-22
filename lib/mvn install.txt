@@ -1,0 +1,5 @@
+mvn install:install-file -Dfile="lib\javabuilder.jar" -DgroupId=com.mathworks.toolbox -DartifactId=javabuilder -Dversion=9.2.0.538062 -Dpackaging=jar
+
+
+
+mvn install:install-file -Dfile="lib\runAC.jar" -DgroupId=com.mathworks -DartifactId=runAC -Dversion=1.0 -Dpackaging=jar
