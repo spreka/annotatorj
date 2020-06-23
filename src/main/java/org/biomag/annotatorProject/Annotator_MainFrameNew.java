@@ -8389,7 +8389,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 						for (int i=0; i<manyROIs.length; i++) {
 				        	tmpROI=manyROIs[i];
 
-				        	if (tmpROI.containsPoint(mouseX,mouseY)) {
+				        		//if (tmpROI.containsPoint(mouseX,mouseY)) { // <-- this doesn't work anymore on zoomed-in-added contours for some reason
+					        	if (tmpROI.contains((int)Math.round(mouseX),(int)Math.round(mouseY))) {
 				        		// found it
 				        		foundit=true;
 				        		// select this roi on the image
