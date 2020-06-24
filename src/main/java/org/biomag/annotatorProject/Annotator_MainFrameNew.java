@@ -8513,6 +8513,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
         	if (e.isControlDown() || !(managerList!=null && managerList.size()>0)){
         		// zooming in/out --> no need to scroll!
+        		(((ImageCanvas)e.getSource()).getImage().getWindow()).mouseWheelMoved(e);
         		return;
         	}
 
