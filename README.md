@@ -8,7 +8,7 @@ A detailed user manual is provided in [**AnnotatorJ_documentation.pdf**](Annotat
 
 To use this tool you need to:
 
-- Install [JDK 1.8](https://www.oracle.com/java/technologies/javase-jdk8-downloads.html)
+- Install [JDK 1.8](https://java.com/en/download/manual.jsp)
 - (optional) Download [ImageJ](https://imagej.nih.gov/ij/download.html) or [Fiji](https://fiji.sc/) (Fiji is just ImageJ)
 
 # Installation
