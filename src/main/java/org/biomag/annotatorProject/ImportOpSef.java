@@ -304,7 +304,7 @@ public class ImportOpSef{
 				int maskheight=maskdimensions[1];
 
 				// create a ShortProcessor 16-bit image from the floating point 32-bit original mask
-				ShortProcessor shortMaskProc=create16bitMask(mask.getProcessor());
+				ShortProcessor shortMaskProc=ImportOpSef.create16bitMask(mask.getProcessor());
 				mask.setProcessor(shortMaskProc);
 				//mask.setProcessor(mask.getProcessor().convertToShortProcessor());
 
@@ -373,7 +373,7 @@ public class ImportOpSef{
 	}
 
 
-	public ShortProcessor create16bitMask(ImageProcessor orig){
+	public static ShortProcessor create16bitMask(ImageProcessor orig){
 
 		int width=orig.getWidth();
 		int height=orig.getHeight();

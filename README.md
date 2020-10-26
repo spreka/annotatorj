@@ -236,7 +236,9 @@ Possible export options are displayed above.
 
 # Citation
 
-If you use the plugin, please cite our corresponding publication: [...]
+If you use the plugin, please cite our corresponding publication:
+
+Réka Hollandi, Ákos Diósdi, Gábor Hollandi, Nikita Moshkov, Péter Horváth (2020): “**AnnotatorJ: an ImageJ plugin to ease hand-annotation of cellular compartments**”, *Molecular Biology of the Cell*, Vol. 31, No. 20, 2179-2186, https://doi.org/10.1091/mbc.E20-02-0156
 
 
 [annotexporttypes]: demos/annotation_and_export_types.png "Annotation and export types"

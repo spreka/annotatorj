@@ -22,6 +22,7 @@ import ij.plugin.Converter;
 import ij.plugin.Thresholder;
 import ij.plugin.filter.ThresholdToSelection;
 import ij.plugin.Resizer;
+import ij.io.DirectoryChooser;
 
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -247,6 +248,11 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     private boolean isProcessingWheelEvent;
     private Timer wheelMovementTimer;
     private int wheelStepCounter;
+    private boolean saveOutlines;
+    private boolean enableMaskLoad;
+    private boolean maskFolderInited;
+    private String maskFolderInitedPath;
+    private boolean autoMaskLoad;
 
 
 	// options frame elements:
@@ -911,9 +917,17 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 		saveAnnotTimes=false;
 		selectedAnnotationType=null;
 		rememberAnnotType=false;
+		saveOutlines=false;
+		enableMaskLoad=false;
+		maskFolderInited=false;
+		maskFolderInitedPath=null;
+		autoMaskLoad=false;
 		String saveAnnotTimesString=props.getProperty("saveAnnotTimes");
 		String defaultAnnotTypeString=props.getProperty("defaultAnnotType");
 		String rememberAnnotTypeString=props.getProperty("rememberAnnotType");
+		String saveOutlinesString=props.getProperty("saveOutlines");
+		String enableMaskLoadString=props.getProperty("enableMaskLoad");
+		String autoMaskLoadString=props.getProperty("autoMaskLoad");
 
 		String[] booleans=new String[6];
 		booleans[0]="no";
@@ -978,6 +992,49 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			// save to properties
 			SaveNewProp("defaultAnnotType", selectedAnnotationType);
 		}
+
+		if (Arrays.asList(booleans).contains(saveOutlinesString.toLowerCase())) {
+			for (int mi=0; mi<booleans.length; mi++) {
+				if (saveOutlinesString.equals(booleans[mi])) {
+					// found it
+					if (mi==0 || mi==1 || mi==2) {
+						saveOutlines=false;
+					} else if (mi==3 || mi==4 || mi==5) {
+						saveOutlines=true;
+					}
+					break;
+				}
+			}
+		}
+		
+		if (Arrays.asList(booleans).contains(enableMaskLoadString.toLowerCase())) {
+			for (int mi=0; mi<booleans.length; mi++) {
+				if (enableMaskLoadString.equals(booleans[mi])) {
+					// found it
+					if (mi==0 || mi==1 || mi==2) {
+						enableMaskLoad=false;
+					} else if (mi==3 || mi==4 || mi==5) {
+						enableMaskLoad=true;
+					}
+					break;
+				}
+			}
+		}
+		
+		if (Arrays.asList(booleans).contains(autoMaskLoadString.toLowerCase())) {
+			for (int mi=0; mi<booleans.length; mi++) {
+				if (autoMaskLoadString.equals(booleans[mi])) {
+					// found it
+					if (mi==0 || mi==1 || mi==2) {
+						autoMaskLoad=false;
+					} else if (mi==3 || mi==4 || mi==5) {
+						autoMaskLoad=true;
+					}
+					break;
+				}
+			}
+		}
+
 		
 
 
@@ -3450,6 +3507,13 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				//new Runner("Open", imp);
 				openNew(runnerInstance);
 				imp=WindowManager.getCurrentImage();
+
+				// check if auto mask load is enabled
+				if (enableMaskLoad&&autoMaskLoad&&maskFolderInited){
+					// load the mask from the selected folder automatically
+					loadROIs();
+				}
+
 				return;
 			}
 
@@ -3492,6 +3556,13 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				//new Runner("Open", imp);
 				openNew(runnerInstance);
 				imp=WindowManager.getCurrentImage();
+
+				// check if auto mask load is enabled
+				if (enableMaskLoad&&autoMaskLoad&&maskFolderInited){
+					// load the mask from the selected folder automatically
+					loadROIs();
+				}
+
 				return;
 			}
 
@@ -4274,6 +4345,194 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			IJ.log("Saved new "+propName+" to config successfully");
 		} else {
 			IJ.log("Could not save new "+propName+" to config");
+		}
+	}
+
+
+	// -------------------
+	// load annotation fcn
+	// -------------------
+	public void loadROIs(){
+		if (!started || WindowManager.getCurrentWindow()==null) {
+			IJ.showStatus("Open an image first");
+			MessageDialog notStartedMsg=new MessageDialog(instance,
+             "Warning",
+             "Click Open to select an image first");
+			return;
+		}
+
+		// check if we have annotations in the list before loading anything to it
+		int curROInum=manager.getCount();
+		IJ.log("Before loading we had "+String.valueOf(curROInum)+" contours");
+		int prevROIcount=manager.getCount();
+		if (loadedROI) {
+			// currently the loaded rois are appended to the current roi list
+			// TODO: ask if those should be deleted first
+		}
+
+		// file open dialog
+		//Opener opener3=new Opener();
+		
+		
+
+		// check if masks can be loaded (false by default)
+		if (enableMaskLoad){
+			// import ROIs from masks
+			String loadedROIfolder=null;
+			if (maskFolderInited){
+				// no need to open the dialog again
+				loadedROIfolder=maskFolderInitedPath;
+			} else {
+				// browse mask folder
+				DirectoryChooser opener4=new DirectoryChooser("Select folder of mask files");
+				loadedROIfolder=opener4.getDirectory();
+			}
+			
+			// construct file name: [image name].tiff
+			String loadedROIname=defFile.substring(0,defFile.lastIndexOf("."))+".tiff";
+			// check if exists
+			File fx = new File(loadedROIfolder+File.separator+loadedROIname);
+		    if (!(fx.exists() && !fx.isDirectory())){
+		    	// mask file doesn't exist
+		    	IJ.log("Mask image "+loadedROIname+" does not exist");
+		    	return;
+		    }
+
+			ImagePlus importedMask=IJ.openImage(loadedROIfolder+File.separator+loadedROIname);
+
+			boolean successfullyImportedROIs=importROIsFromMaskImage(importedMask);
+			if (!successfullyImportedROIs){
+				IJ.log("Failed to import ROIs from mask file: "+loadedROIname);
+				return;
+			} else {
+				IJ.log("Imported ROIs from mask file: "+loadedROIname);
+				maskFolderInited=true;
+				maskFolderInitedPath=loadedROIfolder;
+			}
+			WindowManager.setCurrentWindow(imp.getWindow());
+
+			if (showCnt)
+				manager.runCommand("Show All");
+			else
+				manager.runCommand("Show None");
+
+		} else {
+			// normal way, import ROI.zip file
+			OpenDialog opener4=new OpenDialog("Select an annotation (ROI) .zip file",null);
+			String loadedROIfolder=opener4.getDirectory();
+			String loadedROIname=opener4.getFileName();
+			//opener3.open(destFolder+File.separator+destNameRaw);
+		
+			boolean loadedROIsuccessfully=manager.runCommand("Open",loadedROIfolder+File.separator+loadedROIname);
+			if (!loadedROIsuccessfully) {
+				IJ.log("Failed to open ROI: "+loadedROIname);
+				MessageDialog failed2loadROIMsg=new MessageDialog(instance,
+                 "Error",
+                 "Failed to open ROI .zip file");
+				return;
+			} else {
+				IJ.log("Opened ROI: "+loadedROIname);
+			}
+		}
+
+		loadedROI=true;
+		curROInum=manager.getCount();
+		IJ.log("After loading we have "+String.valueOf(curROInum)+" contours");
+
+
+		// rename the loaded contours if there were previous contours added
+
+		// name the new roi by its number in the list:
+    	int lastNumber=0;
+		if (prevROIcount>0) {
+			String lastName=manager.getRoi(prevROIcount-1).getName();
+    		lastNumber=Integer.parseInt(lastName);
+		} else {
+			// no rois yet, use 0
+		}
+		if (curROInum>0) {
+			// new contours loaded, need to rename them
+			for (int i=prevROIcount; i<curROInum; i++) {
+				manager.rename(i,String.format("%04d",lastNumber+1));
+				lastNumber+=1;
+			}
+		}
+
+		// check if the rois have class info saved
+		boolean isClassified=false;
+		for (int r=prevROIcount;r<curROInum;r++){
+			if (manager.getRoi(r).getGroup()>0){
+				isClassified=true;
+				break;
+			}
+		}
+
+		if (isClassified){
+			// set class vars accordingly
+			classFrameNames=new ArrayList<String>();
+			classFrameColours=new ArrayList<Integer>();
+
+			for (int r=prevROIcount;r<curROInum;r++){
+				int tmpGroup=manager.getRoi(r).getGroup();
+				String tmpGroupName="Class_"+String.format("%02d",tmpGroup);
+				//debug:
+				//IJ.log(tmpGroupName);
+				if (tmpGroup>0 && !classFrameNames.contains(tmpGroupName)){
+					classFrameNames.add(tmpGroupName);
+					//int tmpGroupColourIdx=getClassColourIdx(manager.getRoi(r).getStrokeColor());
+					//Color tmpColour=null;
+					//tmpColour=manager.getRoi(r).getFillColor();
+					//if (tmpColour==null)
+						Color tmpColour=manager.getRoi(r).getStrokeColor();
+					//Color tmpColour2=new Color(tmpColour.getRed(),tmpColour.getGreen(),tmpColour.getBlue());
+					int tmpGroupColourIdx=getClassColourIdx(tmpColour); //tmpColour2);
+					if (tmpGroupColourIdx==-1)
+						tmpGroupColourIdx=0;
+
+					// assign a free colour to the new class
+					if (!classFrameColours.contains(tmpGroupColourIdx))
+						classFrameColours.add(tmpGroupColourIdx);
+					else {
+						for (int i=0;i<8;i++){
+							if (!classFrameColours.contains(i)){
+								// found first free colour, take it
+								classFrameColours.add(i);
+								break;
+							}
+						}
+					}
+					
+					if (selectedClassNameNumber<0){
+						selectedClassNameNumber=tmpGroup;
+					}
+					//debug:
+					IJ.log(">>> import: added class '"+tmpGroupName+"' with colour '"+tmpGroupColourIdx+"'");
+				}
+			}
+
+			///*
+			// colour import doesn't work, repaint all contours to the "imported" colours
+			for (int r=prevROIcount;r<curROInum;r++){
+				Roi tmpROI=manager.getRoi(r);
+				int tmpGroup=tmpROI.getGroup();
+				if (tmpGroup>0){
+					int tmpIdx=classFrameColours.get(classFrameNames.indexOf("Class_"+String.format("%02d",tmpGroup)));
+					//IJ.log("group: "+String.valueOf(tmpGroup)+"\t|\ttmpIdx: "+String.valueOf(tmpIdx));
+					tmpROI.setStrokeColor(getClassColour(tmpIdx));
+					manager.setRoi(tmpROI,r);
+				} else {
+					tmpROI.setStrokeColor(currentSelectionColor);
+				}
+			}
+
+			//*/
+
+			if (classFrameNames.size()==0 && classFrameColours.size()==0){
+				// no class info was found in the rois
+				classFrameNames=null;
+				classFrameColours=null;
+			}
+			startedClassifying=true;
 		}
 	}
 	
@@ -7641,6 +7900,29 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					
 			}
 
+			// -------------------------
+			// save outlined objects
+
+			/*
+			if (saveOutlines){
+				if (selectedAnnotationType.equals("semantic")){
+					MessageDialog semOutlineMsg=new MessageDialog(instance,
+						"Warning",
+						"Saving semantic regions as outlines is not \npermitted in semantic annotation mode.");
+				} else {
+					// save outlined image
+
+					String outlineExportFolder="outlined_images";
+					exportFolder=destFolder+File.separator+selectedClass+File.separator+outlineExportFolder;
+
+					// construct output file name:
+					outputFileName=exportFolder+File.separator+destNameRaw.substring(0,destNameRaw.lastIndexOf("."))+".png";
+
+					Annotator_ExportFrameNew.saveOutlinedImage(imp,outputFileName,exportFolder);
+				}
+			}
+			*/
+
 			IJ.log("FINISHED EXPORTING ANNOTATIONS\n---------------------");
 
 			finishedSaving=true;
@@ -7998,6 +8280,80 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 		}
 
 		return roiIdx;
+	}
+
+
+	public boolean importROIsFromMaskImage(ImagePlus mask){
+
+		boolean success=false;
+		int initCount=manager.getCount();
+
+		if (mask==null){
+			// failed image read, abort
+			return success;
+		}
+		
+ 		//debug:
+ 		//mask.show();
+
+ 		int[] maskdimensions=mask.getDimensions();
+		int maskwidth=maskdimensions[0];
+		int maskheight=maskdimensions[1];
+
+		// create a ShortProcessor 16-bit image from the floating point 32-bit original mask
+		ShortProcessor shortMaskProc=ImportOpSef.create16bitMask(mask.getProcessor());
+		mask.setProcessor(shortMaskProc);
+		//mask.setProcessor(mask.getProcessor().convertToShortProcessor());
+
+ 		// get max value to see the number of labels
+ 		double maxValue=mask.getProcessor().getMax();
+ 		int[] maskHistogram=mask.getProcessor().getHistogram();
+
+ 		//manager=new RoiManager(false);
+ 		mask.show();
+ 		WindowManager.setCurrentWindow(mask.getWindow());
+
+ 		// skip 0-values in histogram (background)
+ 		for (int k=1; k<maskHistogram.length;k++){
+ 			if (maskHistogram[k]!=0){
+ 				//debug:
+ 				//IJ.log("k="+String.valueOf(k)+"\t: "+String.valueOf(maskHistogram[k]));
+				boolean foundValues=false;
+
+ 				// nextgen way ------------------------------------------
+ 				//mask.show();
+				// threshold the mask to get an ROI
+				ImageProcessor curMask = mask.getProcessor();
+				curMask.setThreshold(k,k,ImageProcessor.NO_LUT_UPDATE);
+				Roi curROI = new ThresholdToSelection().convert(curMask);
+				//mask.draw();
+				mask.setRoi(curROI);
+				// nextgen way end --------------------------------------
+
+				curROI=mask.getRoi();
+		        
+				if (curROI==null){
+					IJ.log(" >>>> failed to create ROI from mask #"+String.valueOf(k));
+				} else {
+					// prefix 0-s to the name
+					String curROIname=String.format("%04d",k); // this should be k
+					curROI.setName(curROIname);
+
+					manager.runCommand("Add");
+				}
+
+ 			}
+ 		}
+
+ 		mask.changes=false;
+		mask.getWindow().close();
+
+		if (manager.getCount()<=initCount)
+			success=false;
+		else
+			success=true;
+
+		return success;
 	}
 
 
@@ -8620,6 +8976,12 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
 				openNew(this);
 
+				// check if auto mask load is enabled
+				if (enableMaskLoad&&autoMaskLoad&&maskFolderInited){
+					// load the mask from the selected folder automatically
+					loadROIs();
+				}
+
 			}
 			// SAVE ---------------------------------------
 			else if (command.equals("Save")){
@@ -8633,141 +8995,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			// LOAD --------------------------------
 			else if (command.equals("Load")){
 				// loads a previous annotation to the roi list
-				if (!started || WindowManager.getCurrentWindow()==null) {
-					IJ.showStatus("Open an image first");
-					MessageDialog notStartedMsg=new MessageDialog(instance,
-                     "Warning",
-                     "Click Open to select an image first");
-					return;
-				}
 
-				// check if we have annotations in the list before loading anything to it
-				int curROInum=manager.getCount();
-				IJ.log("Before loading we had "+String.valueOf(curROInum)+" contours");
-				int prevROIcount=manager.getCount();
-				if (loadedROI) {
-					// currently the loaded rois are appended to the current roi list
-					// TODO: ask if those should be deleted first
-				}
-
-				// file open dialog
-				Opener opener3=new Opener();
-				
-				OpenDialog opener4=new OpenDialog("Select an annotation (ROI) .zip file",null);
-				String loadedROIfolder=opener4.getDirectory();
-				String loadedROIname=opener4.getFileName();
-				//opener3.open(destFolder+File.separator+destNameRaw);
-				boolean loadedROIsuccessfully=manager.runCommand("Open",loadedROIfolder+File.separator+loadedROIname);
-				if (!loadedROIsuccessfully) {
-					IJ.log("Failed to open ROI: "+loadedROIname);
-					MessageDialog failed2loadROIMsg=new MessageDialog(instance,
-                     "Error",
-                     "Failed to open ROI .zip file");
-					return;
-				} else {
-					IJ.log("Opened ROI: "+loadedROIname);
-				}
-
-				loadedROI=true;
-				curROInum=manager.getCount();
-				IJ.log("After loading we have "+String.valueOf(curROInum)+" contours");
-
-
-				// rename the loaded contours if there were previous contours added
-
-				// name the new roi by its number in the list:
-            	int lastNumber=0;
-        		if (prevROIcount>0) {
-        			String lastName=manager.getRoi(prevROIcount-1).getName();
-	        		lastNumber=Integer.parseInt(lastName);
-        		} else {
-        			// no rois yet, use 0
-        		}
-        		if (curROInum>0) {
-        			// new contours loaded, need to rename them
-        			for (int i=prevROIcount; i<curROInum; i++) {
-        				manager.rename(i,String.format("%04d",lastNumber+1));
-        				lastNumber+=1;
-        			}
-        		}
-
-        		// check if the rois have class info saved
-        		boolean isClassified=false;
-        		for (int r=prevROIcount;r<curROInum;r++){
-        			if (manager.getRoi(r).getGroup()>0){
-						isClassified=true;
-						break;
-					}
-        		}
-
-        		if (isClassified){
-        			// set class vars accordingly
-        			classFrameNames=new ArrayList<String>();
-					classFrameColours=new ArrayList<Integer>();
-
-    				for (int r=prevROIcount;r<curROInum;r++){
-    					int tmpGroup=manager.getRoi(r).getGroup();
-    					String tmpGroupName="Class_"+String.format("%02d",tmpGroup);
-    					//debug:
-    					//IJ.log(tmpGroupName);
-    					if (tmpGroup>0 && !classFrameNames.contains(tmpGroupName)){
-    						classFrameNames.add(tmpGroupName);
-    						//int tmpGroupColourIdx=getClassColourIdx(manager.getRoi(r).getStrokeColor());
-    						//Color tmpColour=null;
-    						//tmpColour=manager.getRoi(r).getFillColor();
-    						//if (tmpColour==null)
-    							Color tmpColour=manager.getRoi(r).getStrokeColor();
-    						//Color tmpColour2=new Color(tmpColour.getRed(),tmpColour.getGreen(),tmpColour.getBlue());
-    						int tmpGroupColourIdx=getClassColourIdx(tmpColour); //tmpColour2);
-    						if (tmpGroupColourIdx==-1)
-    							tmpGroupColourIdx=0;
-
-    						// assign a free colour to the new class
-    						if (!classFrameColours.contains(tmpGroupColourIdx))
-    							classFrameColours.add(tmpGroupColourIdx);
-    						else {
-    							for (int i=0;i<8;i++){
-									if (!classFrameColours.contains(i)){
-										// found first free colour, take it
-										classFrameColours.add(i);
-										break;
-									}
-								}
-    						}
-    						
-    						if (selectedClassNameNumber<0){
-    							selectedClassNameNumber=tmpGroup;
-    						}
-    						//debug:
-    						IJ.log(">>> import: added class '"+tmpGroupName+"' with colour '"+tmpGroupColourIdx+"'");
-    					}
-    				}
-
-        			///*
-        			// colour import doesn't work, repaint all contours to the "imported" colours
-    				for (int r=prevROIcount;r<curROInum;r++){
-    					Roi tmpROI=manager.getRoi(r);
-    					int tmpGroup=tmpROI.getGroup();
-    					if (tmpGroup>0){
-    						int tmpIdx=classFrameColours.get(classFrameNames.indexOf("Class_"+String.format("%02d",tmpGroup)));
-    						//IJ.log("group: "+String.valueOf(tmpGroup)+"\t|\ttmpIdx: "+String.valueOf(tmpIdx));
-    						tmpROI.setStrokeColor(getClassColour(tmpIdx));
-    						manager.setRoi(tmpROI,r);
-    					} else {
-    						tmpROI.setStrokeColor(currentSelectionColor);
-    					}
-    				}
-
-        			//*/
-
-        			if (classFrameNames.size()==0 && classFrameColours.size()==0){
-        				// no class info was found in the rois
-        				classFrameNames=null;
-						classFrameColours=null;
-        			}
-        			startedClassifying=true;
-        		}
-
+				loadROIs();
 			}
 
 			// OVERLAY ---------------------------
@@ -9226,6 +9455,9 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			this.props.setProperty("defaultAnnotType","");
 			this.props.setProperty("rememberAnnotType","no");
 			//this.props.setProperty("defaultClass","");
+			this.props.setProperty("saveOutlines","no"); //"no" //"yes"
+			this.props.setProperty("enableMaskLoad","no");
+			this.props.setProperty("autoMaskLoad","no");
 
 			annotInst.props=this.props;
 		}
@@ -9341,6 +9573,18 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				newProps.setProperty("defaultClass","");
 			}
 			*/
+
+			if (newProps.getProperty("saveOutlines")==null || !(Arrays.asList(booleans).contains(newProps.getProperty("saveOutlines")))) {
+				newProps.setProperty("saveOutlines","no"); // "no" // "yes"
+			}
+			
+			if (newProps.getProperty("enableMaskLoad")==null || !(Arrays.asList(booleans).contains(newProps.getProperty("enableMaskLoad")))) {
+				newProps.setProperty("enableMaskLoad","no"); // "no" // "yes"
+			}
+			
+			if (newProps.getProperty("autoMaskLoad")==null || !(Arrays.asList(booleans).contains(newProps.getProperty("autoMaskLoad")))) {
+				newProps.setProperty("autoMaskLoad","no"); // "no" // "yes"
+			}
 			
 			return newProps;
 		}
@@ -9475,7 +9719,11 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				// add new props
 				+"\nsaveAnnotTimes:\t\t"+this.props.getProperty("saveAnnotTimes")
 				+"\ndefaultAnnotType:\t\t"+this.props.getProperty("defaultAnnotType")
-				+"\nrememberAnnotType:\t\t"+this.props.getProperty("rememberAnnotType");
+				+"\nrememberAnnotType:\t\t"+this.props.getProperty("rememberAnnotType")
+				+"\nsaveOutlines:\t\t"+this.props.getProperty("saveOutlines")
+				+"\nenableMaskLoad:\t\t"+this.props.getProperty("enableMaskLoad")
+				+"\nautoMaskLoad:\t\t"+this.props.getProperty("autoMaskLoad")
+				;
 		}
 
 	} // AnnotatorProperties class
@@ -9528,7 +9776,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 	    	//impp=imp;
 	    	// debug:
 	    	//IJ.log("in imageClosed fcn...");
-	    	if (lastKey!=null && !closeingOnPurpuse){// && lislastKey!=null) {
+	    	if (lastKey!=null && !closeingOnPurpuse){ // && lislastKey!=null) {
 		    	IJ.log("in imageClosed fnc \""+lastKey.getKeyChar()+"\" key was released");
 				// make sure that pressing 'w' doesnt close the image without warning
 				if (lastKey.getKeyCode() == KeyEvent.VK_W){
@@ -9642,6 +9890,10 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					//lislastKey=null;
 					//lastKey=null;
 					this.listener3=null;
+				} else {
+					// close it anyway
+					impp.changes=false;
+					impp.getWindow().close();
 				}
 			}
 	    };

@@ -60,6 +60,7 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 	private JCheckBox chckbxMultiLayer;
 	private JCheckBox chckbxSemantic;
 	private JCheckBox chckbxCoordinates;
+	private JCheckBox chckbxOverlay;
 	private JButton btnExportMasks;
 	private JButton btnCancel;
 
@@ -85,6 +86,7 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 	private boolean multiLayer;
 	private boolean semantic;
 	private boolean coordinates;
+	private boolean overlay;
 	private boolean exportDone;
 
 	private String originalFolder;
@@ -264,6 +266,11 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 		chckbxCoordinates.addItemListener(this);
 		add(chckbxCoordinates);
 
+		JCheckBox chckbxOverlay = new JCheckBox("Overlay");
+		chckbxOverlay.setToolTipText("Annotations overlayed as outlines on the original image");
+		chckbxOverlay.addItemListener(this);
+		add(chckbxOverlay);
+
 
 		// object type selector radio buttons
 		rdbtnRoi = new JRadioButton("ROI");
@@ -283,6 +290,7 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 		        	chckbxMultiLayer.setEnabled(true);
 		        	chckbxSemantic.setEnabled(true);
 		        	chckbxCoordinates.setEnabled(true);
+		        	chckbxOverlay.setEnabled(true);
 
 		        	initializeOrigFolderOpening(textFieldOrig.getText());
 		        	initializeROIFolderOpening(textFieldROI.getText());
@@ -311,6 +319,7 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 		        	chckbxMultiLayer.setEnabled(true);
 		        	chckbxSemantic.setEnabled(true);
 		        	chckbxCoordinates.setEnabled(true);
+		        	chckbxOverlay.setEnabled(true);
 
 		        	initializeOrigFolderOpening(textFieldOrig.getText());
 		        	initializeROIFolderOpening(textFieldROI.getText());
@@ -342,6 +351,7 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 		        	chckbxMultiLayer.setEnabled(false);
 		        	chckbxSemantic.setEnabled(false);
 		        	chckbxCoordinates.setEnabled(true);
+		        	chckbxOverlay.setEnabled(true);
 		        	// also reset the others to false
 		        	chckbxMultiLabel.setSelected(false);
 		        	chckbxMultiLayer.setSelected(false);
@@ -402,7 +412,8 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 									.addGroup(gl_panel.createSequentialGroup()
 										.addComponent(chckbxSemantic)
 										.addGap(164))
-									.addComponent(chckbxCoordinates, Alignment.LEADING))
+									.addComponent(chckbxCoordinates, Alignment.LEADING)
+									.addComponent(chckbxOverlay, Alignment.LEADING))
 								.addComponent(lblNewLabel))
 							.addGap(16)))
 					.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
@@ -452,7 +463,9 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 						.addComponent(rdbtnBoundingBox))
 					.addPreferredGap(ComponentPlacement.RELATED)
 					.addComponent(chckbxCoordinates)
-					.addGap(27)
+					.addPreferredGap(ComponentPlacement.RELATED)
+					.addComponent(chckbxOverlay)
+					.addGap(4)
 					.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
 						.addComponent(btnExportMasks)
 						.addComponent(btnCancel))
@@ -483,6 +496,7 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 		multiLayer=false;
 		semantic=false;
 		coordinates=false;
+		overlay=false;
 
 		exportDone=false;
 
@@ -561,6 +575,10 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
   			coordinates=isSelected;
   			IJ.log("Coordinates: "+String.valueOf(state));
 
+  		}
+  		else if(cbText.equals("Overlay")){
+  			overlay=isSelected;
+  			IJ.log("Overlay: "+String.valueOf(state));
   		}
 
   		else
@@ -1179,7 +1197,7 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 
 
 				// check that at least one export option is selected:
-				if (!multiLabel && !multiLayer && !semantic && !coordinates) {
+				if (!multiLabel && !multiLayer && !semantic && !coordinates && !overlay) {
 					IJ.showStatus("Select export option");
 					IJ.log("No export option is selected");
 					MessageDialog noExportOptionMsg=new MessageDialog(instance,
@@ -1986,6 +2004,23 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 				refreshMask=true;
 			}
 
+			if(overlay){
+				// outlines overlayed on original image
+
+				exportFolder="outlined_images";
+
+				// create export folder:
+				annotationFolder2=createExportFolder(exportFolder);
+				// construct output file name:
+				outputFileName=annotationFolder2+File.separator+curAnnotFileRaw+".tiff";
+				// save output image:
+				origImage.show();
+				manager.runCommand("Show All");
+				Annotator_ExportFrameNew.saveOutlinedImage(origImage,outputFileName,annotationFolder2);
+				manager.runCommand("Show None");
+				origImage.hide();
+			}
+
 			
 			// measure time
     		long curTime = (System.nanoTime()-lastStartTime)/(long)1000000; //ms time
@@ -2052,6 +2087,44 @@ public class Annotator_ExportFrameNew extends PlugInFrame implements ActionListe
 		}
 	
 	} // Runner inner class
+
+
+	// save current annotations as outlines on the original image
+	public static void saveOutlinedImage(ImagePlus image, String outputFileName, String exportFolder){
+		OverlayCommands overlayCommandsObj=new OverlayCommands();
+		overlayCommandsObj.run("flatten");
+		image.hide();
+		ImagePlus outlineImp=WindowManager.getCurrentImage();
+		image.show();
+		if (outlineImp==null || outlineImp.equals(image)){
+			// failed to create new flattened image
+			IJ.log("Failed to create outlined image");
+		} else {
+
+			outlineImp.hide();
+
+			File outDir=new File(exportFolder);
+			if (outDir.exists() && outDir.isDirectory()) {
+				// folder already exists
+			} else {
+				outDir.mkdir();
+				IJ.log("Created output folder: "+exportFolder);
+			}
+
+			
+			//IJ.saveAs("png",outputFileName); // current image must not be hidden for this!
+			boolean successfullySaved2=IJ.saveAsTiff(outlineImp,outputFileName);
+			if (successfullySaved2) {
+				IJ.log("Saved outline image: "+outputFileName);
+			} else {
+				IJ.log("Failed to save outline image: "+outputFileName);
+			}
+
+			
+			outlineImp.changes=false;
+			outlineImp.close();
+		}
+	}
 
 
 	// generate class mask as a stack image

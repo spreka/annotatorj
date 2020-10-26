@@ -15,7 +15,7 @@
   <!-- ANNOTATORJ -->
   <groupId>org.biomag</groupId>
   <artifactId>annotator_Project</artifactId>
-  <version>0.0.2-SNAPSHOT</version>
+  <version>0.0.3-SNAPSHOT</version>
   <packaging>jar</packaging>
   
   <name>annotator_Project</name>
@@ -148,7 +148,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>3.8.1</version>
+      <version>4.13.1</version>
       <scope>test</scope>
     </dependency>
     
@@ -267,7 +267,7 @@
     <dependency>
     	<groupId>net.imagej</groupId>
     	<artifactId>ij</artifactId>
-    	<version>1.52v</version> <!-- 1.52p -->
+    	<version>1.53e</version> <!-- 1.52v --> <!-- 1.52p -->
     	<exclusions>
     		<exclusion>
     			<groupId>io.scif</groupId>
