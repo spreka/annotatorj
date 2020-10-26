@@ -9890,10 +9890,12 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					//lislastKey=null;
 					//lastKey=null;
 					this.listener3=null;
+				/*
 				} else {
 					// close it anyway
 					impp.changes=false;
 					impp.getWindow().close();
+				*/
 				}
 			}
 	    };
