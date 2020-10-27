@@ -8331,6 +8331,9 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				// nextgen way end --------------------------------------
 
 				curROI=mask.getRoi();
+				
+				// debug:
+				IJ.log("curROI: "+String.valueOf(curROI.size())+"\t | isVisible: "+String.valueOf(curROI.isVisible()));
 		        
 				if (curROI==null){
 					IJ.log(" >>>> failed to create ROI from mask #"+String.valueOf(k));
@@ -8339,7 +8342,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					String curROIname=String.format("%04d",k); // this should be k
 					curROI.setName(curROIname);
 
-					manager.runCommand("Add");
+					//manager.runCommand("Add");
+					manager.addRoi(curROI);
 				}
 
  			}
@@ -9890,12 +9894,13 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					//lislastKey=null;
 					//lastKey=null;
 					this.listener3=null;
-				/*
+
 				} else {
 					// close it anyway
-					impp.changes=false;
-					impp.getWindow().close();
-				*/
+					if (impp.getWindow()!=null){
+						impp.changes=false;
+						impp.getWindow().close();
+					}
 				}
 			}
 	    };
