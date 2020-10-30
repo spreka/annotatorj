@@ -7123,14 +7123,14 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     		lblCurrentClass.setText("<html>Current: <font color='red'>Class_01</font></html>");
 
     		// set default roi group
-    		manager.setGroup(-1);
+    		manager.setGroup(0); //-1
 
     		// set default class selection list
     		comboBoxDefaultClass.addItem("(none)");
     		comboBoxDefaultClass.addItem("Class_01");
     		comboBoxDefaultClass.addItem("Class_02");
     		comboBoxDefaultClass.setSelectedIndex(0);
-    		defaultClassNumber=-1;
+    		defaultClassNumber=0; //-1
 
     		classNumberCounter=2;
 
@@ -7143,6 +7143,8 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
 			for (int i=0; i<classFrameNames.size();i++){
 				String curClassName=classFrameNames.get(i);
+				if (curClassName==null)
+					continue;
 				listModelClasses.addElement(curClassName);
 				comboBoxDefaultClass.addItem(curClassName);
 
@@ -7157,7 +7159,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			classListList.setSelectedIndex(selectedClassIdxList);
 
 			comboBoxDefaultClass.setSelectedIndex(0);
-			defaultClassNumber=-1;
+			defaultClassNumber=0; //-1
 		}
 
 		//comboBoxDefaultClass.addItemListener(this);
@@ -7178,7 +7180,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			    	IJ.log("Selected '"+selectedClassName+"' as default class");
 			    	if (selectedClassName.equals("(none)")){
 			    		// set no defaults
-			    		defaultClassNumber=-1;
+			    		defaultClassNumber=0; //-1
 			    	} else {
 			    		// a useful class is selected
 			    		defaultClassNumber=classNameLUT.get(selectedClassName);
@@ -7385,7 +7387,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 						IJ.log(">>>> deleting the default class --> unclassify these ROIs");
 						comboBoxDefaultClass.setSelectedItem("(none)");
 						//unClassifyClass(defaultClassNumber);
-						defaultClassNumber=-1;
+						defaultClassNumber=0; //-1
 						defaultClassColour=null;
 					}
 					//comboBoxDefaultClass.removeItemAt(selectedClassIdxList+1); // default class selector has "(none)" as the first element
@@ -8333,7 +8335,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				curROI=mask.getRoi();
 				
 				// debug:
-				IJ.log("curROI: "+String.valueOf(curROI.size())+"\t | isVisible: "+String.valueOf(curROI.isVisible()));
+				//IJ.log("curROI: "+String.valueOf(curROI.size())+"\t | isVisible: "+String.valueOf(curROI.isVisible()));
 		        
 				if (curROI==null){
 					IJ.log(" >>>> failed to create ROI from mask #"+String.valueOf(k));
