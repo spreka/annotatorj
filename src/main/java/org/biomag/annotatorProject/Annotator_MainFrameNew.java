@@ -210,6 +210,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 	private boolean startedEditing;
 	private Roi origEditedROI;
 	private float origStrokeWidth;
+	private RoiManager editManager;
 
 	// dl4j constants
 	public final static String DYNAMIC_LOAD_CLASSPATH = "ND4J_DYNAMIC_LOAD_CLASSPATH";
@@ -801,13 +802,13 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 							}
 						} else if (returnVal==JFileChooser.CANCEL_OPTION) {
 					    	IJ.log("canceled model folder open");
-					    	return;
+					    	break; //return;
 						} else {
 					    	IJ.log("Failed to open model folder");
 							MessageDialog failedFolderOpenMsg=new MessageDialog(instance,
 			                 "Error",
 			                 "Could not open folder");
-							return;
+							break; //return;
 					    }
 					}
 
@@ -818,13 +819,13 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				
 		    } else if (returnVal==JFileChooser.CANCEL_OPTION) {
 		    	IJ.log("canceled model folder open");
-		    	return;
+		    	//return;
 			} else {
 		    	IJ.log("Failed to open model folder");
 				MessageDialog failedFolderOpenMsg=new MessageDialog(instance,
                  "Error",
                  "Could not open folder");
-				return;
+				//return;
 		    }
 
 		} else {
@@ -880,6 +881,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 		startedEditing=false;
 		origEditedROI=null;
 		origStrokeWidth=0;
+		editManager=null;
 
 		// set default contour assist vars
 		trainedUNetModel=null;
@@ -1084,7 +1086,11 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			ModelLoaderObj = new ModelLoader(modelJsonFile,modelWeightsFile,this);
 		} else {
 			// cannot find weights file, try to use combined model file
-			ModelLoaderObj = new ModelLoader(null,modelFullFile,this);
+			fx = new File(modelFullFile);
+			if(fx.exists() && !fx.isDirectory())
+				ModelLoaderObj = new ModelLoader(null,modelFullFile,this);
+			else
+				IJ.log("Cannot find model file in plugin init");
 		}
 
         Thread t = new Thread(ModelLoaderObj);
@@ -1835,6 +1841,17 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				acObjects=null;
 				startedEditing=false;
 				origEditedROI=null;
+				if (editManager!=null){
+					editManager.reset();
+					// update normal manager
+					if (showCnt){
+						manager.runCommand("Show None");
+						manager.runCommand("Show All");
+					} else {
+						manager.runCommand("Show All");
+						manager.runCommand("Show None");
+					}
+				}
 
 				// reset freehand selection tool
 				curToolbar.setTool(Toolbar.FREEROI);
@@ -1880,6 +1897,17 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         		inAssisting=false;
         		startedEditing=false;
         		origEditedROI=null;
+        		if (editManager!=null){
+					editManager.reset();
+					// update normal manager
+					if (showCnt){
+						manager.runCommand("Show None");
+						manager.runCommand("Show All");
+					} else {
+						manager.runCommand("Show All");
+						manager.runCommand("Show None");
+					}
+        		}
         		// reset freehand selection tool
 				curToolbar.setTool(Toolbar.FREEROI);
 
@@ -2148,6 +2176,26 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
 		    	// reset the selected contour in ROI manager to this new one
 		    	curROI=imp.getRoi();
+
+		    	// fetch orig ROI from edit roi manager
+		    	if (editManager==null){
+					IJ.log("Failed to find previous version of this ROI, cannot revert to it");
+					origEditedROI=null;
+			    	editROIidx=-1;
+			    	startedEditing=false;
+			    	return;
+		    	} else if (editManager.getCount()!=1) {
+		    		// more than 1 ROI was added to the ROI manager, this should not happen
+		    		IJ.log("Failed to identify the previous version of this ROI, cannot revert to it");
+					origEditedROI=null;
+			    	editROIidx=-1;
+			    	startedEditing=false;
+			    	return;
+		    	} else {
+		    		// exactly 1 ROI as it should be
+		    		origEditedROI=editManager.getRoi(0);
+		    	}
+
 		    	// check if the roi has a class
 		    	int classNum=origEditedROI.getGroup();
 		    	Color newColour=currentSelectionColor;
@@ -2184,6 +2232,19 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				// reset tool to freehand selection
 				curToolbar.setTool(Toolbar.FREEROI);
 
+				origEditedROI=null;
+				editROIidx=-1;
+				if (editManager!=null){
+					editManager.reset();
+					// update normal manager
+					if (showCnt){
+						manager.runCommand("Show None");
+						manager.runCommand("Show All");
+					} else {
+						manager.runCommand("Show All");
+						manager.runCommand("Show None");
+					}
+				}
 				startedEditing=false;
 
 
@@ -2192,6 +2253,25 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 		    else if (e.getKeyCode() == KeyEvent.VK_ESCAPE && startedEditing) {
 		    	// "esc" was pressed
         		// also: contour edit mode is active
+
+        		// fetch orig ROI from edit roi manager
+		    	if (editManager==null){
+					IJ.log("Failed to find previous version of this ROI, cannot revert to it");
+					origEditedROI=null;
+			    	editROIidx=-1;
+			    	startedEditing=false;
+			    	return;
+		    	} else if (editManager.getCount()!=1) {
+		    		// more than 1 ROI was added to the ROI manager, this should not happen
+		    		IJ.log("Failed to identify the previous version of this ROI, cannot revert to it");
+					origEditedROI=null;
+			    	editROIidx=-1;
+			    	startedEditing=false;
+			    	return;
+		    	} else {
+		    		// exactly 1 ROI as it should be
+		    		origEditedROI=editManager.getRoi(0);
+		    	}
 
 		    	// check if the roi has a class
 		    	int classNum=origEditedROI.getGroup();
@@ -2210,6 +2290,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     				//IJ.log("No image opened");
     				imp=WindowManager.getCurrentImage();
     			}
+    			imp.deleteRoi();
 		    	imp.setRoi(origEditedROI);
         		// reset the selected contour in ROI manager to the original version of it
 		    	manager.setRoi(origEditedROI,editROIidx);
@@ -2220,6 +2301,19 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
 		    	curToolbar.setTool(Toolbar.FREEROI);
 
+		    	origEditedROI=null;
+		    	editROIidx=-1;
+		    	if (editManager!=null){
+					editManager.reset();
+					// update normal manager
+					if (showCnt){
+						manager.runCommand("Show None");
+						manager.runCommand("Show All");
+					} else {
+						manager.runCommand("Show All");
+						manager.runCommand("Show None");
+					}
+		    	}
 		    	startedEditing=false;
 		    	
 		    }
@@ -2262,6 +2356,20 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
 
 		    	curToolbar.setTool(Toolbar.FREEROI);
+
+		    	origEditedROI=null;
+		    	editROIidx=-1;
+		    	if (editManager!=null){
+					editManager.reset();
+					// update normal manager
+					if (showCnt){
+						manager.runCommand("Show None");
+						manager.runCommand("Show All");
+					} else {
+						manager.runCommand("Show All");
+						manager.runCommand("Show None");
+					}
+		    	}
 
 		    	startedEditing=false;
 		    }
@@ -3391,6 +3499,17 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
 		startedEditing=false;
 		origEditedROI=null;
+		if (editManager!=null){
+			editManager.reset();
+			// update normal manager
+			if (showCnt){
+				manager.runCommand("Show None");
+				manager.runCommand("Show All");
+			} else {
+				manager.runCommand("Show All");
+				manager.runCommand("Show None");
+			}
+		}
 
 		overlayedROI=false;
 		overlayedSemantic=false;
@@ -3444,6 +3563,17 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					inAssisting=false;
 					startedEditing=false;
 					origEditedROI=null;
+					if (editManager!=null){
+						editManager.reset();
+						// update normal manager
+    					if (showCnt){
+    						manager.runCommand("Show None");
+    						manager.runCommand("Show All");
+    					} else {
+    						manager.runCommand("Show All");
+    						manager.runCommand("Show None");
+    					}
+    				}
 				}
 				
 			}
@@ -5100,6 +5230,12 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			// model loading was here, moved to its own fcn now
 			trainedUNetModel=loadUNetModel(modelJsonFile,modelWeightsFile);
 
+			// check if model was loaded
+			if(trainedUNetModel==null){
+				IJ.log("Failed to load U-Net model for Contour assist");
+				return null;
+			}
+
 		}
 		
 		ImagePlus maskImage=null;
@@ -6480,21 +6616,41 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 		// ----------------------------
 
 		try{
-			if (modelJsonFile==null) {
-				// all saved model in a single .hdf5 file
-				IJ.log("  >> importing from a single .hdf5 file...");
-				trainedUNetModel=KerasModelImport.importKerasModelAndWeights(modelWeightsFile);
-				IJ.log("  >> importing done...");
+			if (modelWeightsFile==null){
+				IJ.log("modelWeightsFile is null");
 			} else {
-				//val unet_model: ComputationGraph = KerasModelImport.importKerasModelAndWeights(modelJsonFile, modelWeightsFile);
-				IJ.log("  >> importing from json config + weights .h5 files...");
-				trainedUNetModel=KerasModelImport.importKerasModelAndWeights(modelJsonFile, modelWeightsFile,false);
-				IJ.log("  >> importing done...");
+
+				if (modelJsonFile==null) {
+					// all saved model in a single .hdf5 file
+					IJ.log("  >> importing from a single .hdf5 file...");
+					File fx = new File(modelWeightsFile);
+			    	if (!(fx.exists() && !fx.isDirectory())){
+			    		// file does not exist
+			    		IJ.log("File "+modelWeightsFile+" does not exist");
+			    	} else {
+			    		trainedUNetModel=KerasModelImport.importKerasModelAndWeights(modelWeightsFile);
+						IJ.log("  >> importing done...");
+			    	}
+					
+				} else {
+					//val unet_model: ComputationGraph = KerasModelImport.importKerasModelAndWeights(modelJsonFile, modelWeightsFile);
+					IJ.log("  >> importing from json config + weights .h5 files...");
+					File fx = new File(modelJsonFile);
+					File fy = new File(modelWeightsFile);
+			    	if (!(fx.exists() && !fx.isDirectory()) || !(fy.exists() && !fy.isDirectory())){
+			    		// files do not exist
+			    		IJ.log("File "+modelWeightsFile+" or "+modelJsonFile+" does not exist");
+			    	} else {
+			    		trainedUNetModel=KerasModelImport.importKerasModelAndWeights(modelJsonFile, modelWeightsFile,false);
+						IJ.log("  >> importing done...");
+			    	}
+					
+				}
+				if (trainedUNetModel!=null) {
+					IJ.log("Successfully loaded pretrained U-Net model for contour correction");
+				}
+				IJ.log("  >> no exception in loading the model...");
 			}
-			if (trainedUNetModel!=null) {
-				IJ.log("Successfully loaded pretrained U-Net model for contour correction");
-			}
-			IJ.log("  >> no exception in loading the model...");
 		} catch(IOException e) {
 			CharArrayWriter caw = new CharArrayWriter();
 			PrintWriter pw = new PrintWriter(caw);
@@ -7726,7 +7882,13 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 							if (maskNamePos<0){
 								// class mask was imported
 								maskNamePos=origMaskFileNames[mi].lastIndexOf("_MaskClass");
-								maskNamePosShift=12;
+								if (maskNamePos<0){
+									// doesn't contain this either --> fabricate something to continue
+									IJ.log("Maks file name does not follow OpSeF convention! You will need to rename the exported mask files manually to import them to OpSeF.");
+									maskNamePos=origMaskFileNames[mi].lastIndexOf(thisFileSep)+1;
+									maskNamePosShift=0;
+								} else
+									maskNamePosShift=12;
 
 							} else {
 								// segmentation mask was imported
@@ -7905,7 +8067,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			// -------------------------
 			// save outlined objects
 
-			/*
+			///*
 			if (saveOutlines){
 				if (selectedAnnotationType.equals("semantic")){
 					MessageDialog semOutlineMsg=new MessageDialog(instance,
@@ -7920,10 +8082,31 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					// construct output file name:
 					outputFileName=exportFolder+File.separator+destNameRaw.substring(0,destNameRaw.lastIndexOf("."))+".png";
 
+					// open a new image for saving then close it
+					if(imp==null)
+						imp=WindowManager.getCurrentImage();
+
+					ImagePlus outlineImage4saving=new ImagePlus("outline",imp.getProcessor());
+					outlineImage4saving.show();
+					OverlayCommands overlayCommandsObjTmp=new OverlayCommands();
+					overlayCommandsObjTmp.run("from");
+
 					Annotator_ExportFrameNew.saveOutlinedImage(imp,outputFileName,exportFolder);
+
+					if(outlineImage4saving!=null){
+						outlineImage4saving.changes=false;
+						outlineImage4saving.close();
+					}
+
+					// turn contours on again if selected
+					if(showCnt){
+						manager.runCommand("Show None");
+						manager.runCommand("Show All");
+					}
+
 				}
 			}
-			*/
+			//*/
 
 			IJ.log("FINISHED EXPORTING ANNOTATIONS\n---------------------");
 
@@ -8586,7 +8769,13 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 										modelFileName=modelWeightsFile;
 									} else {
 										jsonFileName=null;
-										modelFileName=modelFullFile;
+										fy = new File(modelFullFile);
+										if(fy.exists() && !fy.isDirectory())
+											modelFileName=modelFullFile;
+										else{
+											// model doesn't exist in the located folder
+											IJ.log("Cannot find model in Contour assist init");
+										}
 									}
 	        						newROI=contourAssistUNet(imp,curROI,intensityThreshVal,distanceThreshVal,jsonFileName,modelFileName);
 	        					} else if (selectedCorrMethod==1) {
@@ -8654,6 +8843,22 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         			} else {
         				// start edit mode
         				startedEditing=true;
+
+        				// init edit mode roi manager
+        				if (editManager==null)
+        					editManager=new RoiManager(false);
+        				else{
+        					// clear it
+        					editManager.reset();
+        					// update normal manager
+        					if (showCnt){
+        						manager.runCommand("Show None");
+        						manager.runCommand("Show All");
+        					} else {
+        						manager.runCommand("Show All");
+        						manager.runCommand("Show None");
+        					}
+        				}
         				
 
         				// find current image
@@ -8661,7 +8866,9 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 	        			if (imp==null) {
 	        				IJ.log("No image opened");
 	        				startedEditing=false;
-	        				origEditedROI=null;
+	        				//origEditedROI=null
+	        				Annotator_MainFrameNew.this.origEditedROI=null;
+	        				Annotator_MainFrameNew.this.editROIidx=-1;
 	        			}
 	        			else {
 	        				// we have an image
@@ -8688,10 +8895,18 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					        		foundit=true;
 					        		// select this roi on the image
 					        		imp.setRoi(tmpROI);
-					        		origEditedROI=tmpROI;
-					        		editROIidx=i;
-					        		manager.setRoi(new Roi(0.0,0.0,0.0,0.0),editROIidx);
-					        		IJ.log("Selected '"+manager.getName(editROIidx)+"' ROI for editing");
+					        		//origEditedROI=tmpROI;
+					        		Annotator_MainFrameNew.this.origEditedROI=tmpROI;
+					        		editManager.addRoi(tmpROI);
+					        		//editROIidx=i;
+					        		//this.annotatorJinstance.setEditROIidx(i);
+					        		Annotator_MainFrameNew.this.editROIidx=i;
+					        		//manager.setRoi(new Roi(0.0,0.0,0.0,0.0),editROIidx);
+					        		//manager.setRoi(new Roi(0.0,0.0,0.0,0.0),this.annotatorJinstance.getEditROIidx());
+					        		manager.setRoi(new Roi(0.0,0.0,0.0,0.0),Annotator_MainFrameNew.this.editROIidx);
+					        		//IJ.log("Selected '"+manager.getName(editROIidx)+"' ROI for editing");
+					        		//IJ.log("Selected '"+manager.getName(this.annotatorJinstance.getEditROIidx())+"' ROI for editing");
+					        		IJ.log("Selected '"+manager.getName(Annotator_MainFrameNew.this.editROIidx)+"' ROI for editing");
 					        		break;
 					        	}
 					        }
@@ -8700,7 +8915,18 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					        	// failed to find the currently clicked point's corresponding ROI
 					        	IJ.log("Could not find the ROI associated with the selected point on the image.");
 					        	startedEditing=false;
-					        	origEditedROI=null;
+					        	//origEditedROI=null;
+					        	Annotator_MainFrameNew.this.origEditedROI=null;
+					        	Annotator_MainFrameNew.this.editROIidx=-1;
+					        	editManager.reset();
+					        	// update normal manager
+	        					if (showCnt){
+	        						manager.runCommand("Show None");
+	        						manager.runCommand("Show All");
+	        					} else {
+	        						manager.runCommand("Show All");
+	        						manager.runCommand("Show None");
+	        					}
 					        } else {
 					        	// we have a ROI selected
 					        	// invert the ROI's colour to highlight it
@@ -9424,6 +9650,10 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 	    // load the model
 	    public void run() {
 	        this.loadedModel=loadUNetModel(this.modelJson,this.modelWeights);
+	        // check if model was loaded
+			if(this.loadedModel==null){
+				IJ.log("Failed to load U-Net model in ModelLoader");
+			}
 	        this.annotatorJinstance.setTrainedModel(this.loadedModel);
 	    }
 
@@ -9887,7 +10117,20 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			        		acObjects=null;
 			        		inAssisting=false;
 			        		startedEditing=false;
-			        		origEditedROI=null;
+			        		//origEditedROI=null;
+			        		Annotator_MainFrameNew.this.origEditedROI=null;
+			        		Annotator_MainFrameNew.this.editROIidx=-1;
+			        		if (editManager!=null){
+			        			editManager.reset();
+				        		// update normal manager
+	        					if (showCnt){
+	        						manager.runCommand("Show None");
+	        						manager.runCommand("Show All");
+	        					} else {
+	        						manager.runCommand("Show All");
+	        						manager.runCommand("Show None");
+	        					}
+	        				}
 			        		// reset freehand selection tool
 							curToolbar.setTool(Toolbar.FREEROI);
 						}
