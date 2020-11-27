@@ -1805,6 +1805,9 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         		int prevROIcount=manager.getCount();
         		if (prevROIcount>0) {
         			String lastName=manager.getRoi(prevROIcount-1).getName();
+        			// if this was added by the Add button in ROI manager it needs to be renamed too
+					String tmpString=renameROIsInner(lastName,prevROIcount+1);
+					lastName=tmpString==null?lastName:tmpString;
 	        		lastNumber=Integer.parseInt(lastName);
         		} else {
         			// no rois yet, use 0
@@ -2129,6 +2132,9 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         		int prevROIcount=manager.getCount();
         		if (prevROIcount>1) {
         			String lastName=manager.getRoi(prevROIcount-2).getName();
+        			// if this was added by the Add button in ROI manager it needs to be renamed too
+					String tmpString=renameROIsInner(lastName,prevROIcount);
+					lastName=tmpString==null?lastName:tmpString;
 	        		lastNumber=Integer.parseInt(lastName);
         		} else {
         			// no rois yet, use 0
@@ -2450,6 +2456,66 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     		// can suggest based on at least 1 object
 
     	}
+    }
+
+
+    // rename all ROIs in the list
+    public void renameROIs(){
+    	if (!started || manager==null){
+    		// not initialized yet or no ROI manager found
+    		IJ.log("Plugin not initialized yet");
+    		return;
+    	}
+
+    	// name the new roi by its number in the list:
+    	int lastNumber=0;
+		int prevROIcount=manager.getCount();
+		if (prevROIcount>1) {
+			String lastName=manager.getRoi(prevROIcount-2).getName();
+			// if this was added by the Add button in ROI manager it needs to be renamed too
+			String tmpString=renameROIsInner(lastName,prevROIcount);
+			lastName=tmpString==null?lastName:tmpString;
+    		lastNumber=Integer.parseInt(lastName);
+		} else {
+			// no rois yet, use 0
+		}
+
+		String curROIname=String.format("%04d",lastNumber+1);
+
+		// already been here before, add the contour
+		manager.rename(prevROIcount-1,curROIname);
+    }
+
+
+    String renameROIsInner(String lastName, int prevROIcount){
+    	String outName=null;
+    	if (lastName.indexOf("-", 0)!=-1) {
+    		int lastNumber=0;
+			// has a default ROI name with "-" in it --> rename
+			int renameIdx=prevROIcount-2;
+			while (renameIdx>=0){
+				lastName=manager.getRoi(renameIdx).getName();
+				if (lastName.indexOf("-", 0)!=-1)
+					renameIdx--;
+				else
+					break;
+			}
+			// start renaming
+			for (int renameIdx2=renameIdx; renameIdx2!=prevROIcount-2; renameIdx2++) {
+				if (renameIdx2==-1) {
+					// no normally named ROIs but the list is not empty
+					lastNumber=0;
+				} else {
+					lastName=manager.getRoi(renameIdx2).getName();
+					lastNumber=Integer.parseInt(lastName);
+				}
+				String tmpROIname=String.format("%04d",lastNumber+1);
+				manager.rename(renameIdx2+1,tmpROIname);
+			}
+			lastName=manager.getRoi(prevROIcount-2).getName(); //-2
+			outName=lastName;
+		}
+		return outName;
     }
 
     // -------------------
@@ -3565,14 +3631,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 					origEditedROI=null;
 					if (editManager!=null){
 						editManager.reset();
-						// update normal manager
-    					if (showCnt){
-    						manager.runCommand("Show None");
-    						manager.runCommand("Show All");
-    					} else {
-    						manager.runCommand("Show All");
-    						manager.runCommand("Show None");
-    					}
+						
     				}
 				}
 				
@@ -3773,6 +3832,11 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			finishedSaving=false;
 		}
 
+		// rename all ROIs
+		IJ.log("renaming ROIs...");
+		renameROIs();
+		IJ.log("renaming done");
+
 		if (origMaskFileNames==null || !roisFromArgs || !imageFromArgs){
 
 			if (startedClassifying){
@@ -3877,6 +3941,10 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				IJ.log("Cannot find file separator character in the file path\n");
 				return;
 			}
+
+			// save current state of the current roi manager
+	    	if (manager!=null && classMode && (managerList!=null && managerList.size()>0))
+				managerList.set(currentSliceIdx-1,manager);
 
 			for (int mi=0; mi<maskCount; mi++){
 				String outputFileName=exportFolder+File.separator+origMaskFileNames[mi].substring(origMaskFileNames[mi].lastIndexOf(thisFileSep)+1,origMaskFileNames[mi].lastIndexOf("."))+"_ROIs.zip";
@@ -7673,6 +7741,11 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
 		// export the masks here
 		finishedSaving=false;
+
+		// rename all ROIs
+		IJ.log("renaming ROIs...");
+		renameROIs();
+		IJ.log("renaming done");
 
 		int[] dimensions=imp.getDimensions();
 		int width=dimensions[0];
