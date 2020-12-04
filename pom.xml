@@ -267,7 +267,7 @@
     <dependency>
     	<groupId>net.imagej</groupId>
     	<artifactId>ij</artifactId>
-    	<version>1.53e</version> <!-- 1.52v --> <!-- 1.52p -->
+    	<version>1.53g</version> <!-- 1.53e --> <!-- 1.52v --> <!-- 1.52p -->
     	<exclusions>
     		<exclusion>
     			<groupId>io.scif</groupId>

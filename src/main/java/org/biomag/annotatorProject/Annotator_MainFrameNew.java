@@ -2296,7 +2296,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
     				//IJ.log("No image opened");
     				imp=WindowManager.getCurrentImage();
     			}
-    			imp.deleteRoi();
+    			//imp.deleteRoi();
 		    	imp.setRoi(origEditedROI);
         		// reset the selected contour in ROI manager to the original version of it
 		    	manager.setRoi(origEditedROI,editROIidx);
@@ -3548,6 +3548,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
 			WindowManager.getCurrentImage().getCanvas().addMouseListener(runnerInstance);
 			WindowManager.getCurrentImage().getCanvas().addMouseWheelListener(runnerInstance);
+			WindowManager.getCurrentImage().getCanvas().addMouseMotionListener(runnerInstance);
 
 			WindowManager.getCurrentImage().getCanvas().addKeyListener(listener);
 
@@ -4677,6 +4678,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				//IJ.log(tmpGroupName);
 				if (tmpGroup>0 && !classFrameNames.contains(tmpGroupName)){
 					classFrameNames.add(tmpGroupName);
+					classNameLUT.put(tmpGroupName,tmpGroup);
 					//int tmpGroupColourIdx=getClassColourIdx(manager.getRoi(r).getStrokeColor());
 					//Color tmpColour=null;
 					//tmpColour=manager.getRoi(r).getFillColor();
@@ -7379,6 +7381,18 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 			// set selected colour for the previously selected class and colour
 			String selectedClassNameVar="Class_"+String.format("%02d",selectedClassNameNumber);
 			int selectedClassIdxList=classFrameNames.indexOf(selectedClassNameVar);
+			if (selectedClassIdxList==-1){
+				// could not find the selected class in the list e.g. if reimport didnt work well
+				IJ.log("Could not find the selected class in the list of classes, using the first.");
+				selectedClassIdxList=0;
+				classListList.setSelectedIndex(0);
+				String tmpString=classListList.getSelectedValue();
+				if (tmpString==null || tmpString.equals("null")) {
+					// failed to find the selected item in the list
+					selectedClassNameNumber=-1;
+				} else
+					selectedClassNameNumber=classNameLUT.get(tmpString);
+			}
 			setColourRadioButton(selectedClassNameVar,selectedClassIdxList);
 			classListList.setSelectedIndex(selectedClassIdxList);
 
@@ -7541,6 +7555,12 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				} else {
 					lastClassNum=Integer.parseInt(lastClassName.substring(lastClassName.lastIndexOf("_")+1,lastClassName.length()));
 				}
+				
+				lastClassNum=-1;
+				for (String key: classNameLUT.keySet()) {
+					int tmpClassNum=classNameLUT.get(key);
+					lastClassNum=tmpClassNum>lastClassNum?tmpClassNum:lastClassNum;
+				}
 
 				String newClassName="Class_"+String.format("%02d",lastClassNum+1);
 				classFrameNames.add(newClassName);
@@ -7551,13 +7571,19 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 				classNameLUT.put(newClassName,lastClassNum+1);
 
 				// assign a free colour to the new class
-				for (int i=0;i<8;i++){
-					if (!classFrameColours.contains(i)){
-						// found first free colour, take it
-						classFrameColours.add(i);
-						break;
+				if (classFrameNames.size()<=8) {
+					for (int i=0;i<8;i++){
+						if (!classFrameColours.contains(i)){
+							// found first free colour, take it
+							classFrameColours.add(i);
+							break;
+						}
 					}
+				} else {
+					// assign the first colour
+					classFrameColours.add(0);
 				}
+				
 			}
 		});
 		add(btnAddClass);
@@ -8620,7 +8646,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 
 
 	// inner class that listens to mouse clicks
-	class Runner extends Thread implements MouseListener, MouseWheelListener{ // inner class
+	class Runner extends Thread implements MouseListener, MouseWheelListener, MouseMotionListener{ // inner class
 		private String command;
 		private ImagePlus imp;
 	
@@ -9165,7 +9191,35 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
         	}
         }
         public void mouseDragged(MouseEvent e) { 
-	        IJ.log("--Mouse dragged");
+	        //IJ.log("--Mouse dragged");
+        }
+        // track mouse movement over ROIs
+        public void mouseMoved(MouseEvent e){
+        	// we only care about the image positions now
+        	if (e.getSource()==WindowManager.getCurrentImage().getCanvas()){
+        		// debug classes:
+	        	Point curXYpos=e.getPoint(); //imp.getCanvas().getCursorLoc();
+	        	double curX=curXYpos.getX();
+	        	double curY=curXYpos.getY();
+
+				// search already annotated objects in ROI manager to find which ROI contains this point
+				boolean foundit=false;
+				Roi tmpROI=null;
+				Roi[] manyROIs=manager.getRoisAsArray();
+				for (int i=0; i<manyROIs.length; i++) {
+		        	tmpROI=manyROIs[i];
+
+	        		//if (tmpROI.containsPoint(mouseX,mouseY)) { // <-- this doesn't work anymore on zoomed-in-added contours for some reason
+		        	if (tmpROI.contains((int)Math.round(curX),(int)Math.round(curY))) {
+		        		foundit=true;
+		        		//debug:
+		        		//IJ.showStatus("x="+String.valueOf((int)Math.round(curX))+", y="+String.valueOf((int)Math.round(curY))+" | ROI "+tmpROI.getName()+" is of class: "+String.valueOf(tmpROI.getGroup())+" (type "+tmpROI.getTypeAsString()+")");
+		        		
+		        		// show ROI class in status bar on hover:
+		        		IJ.showStatus("x="+String.valueOf((int)Math.round(curX))+", y="+String.valueOf((int)Math.round(curY))+" | ROI "+tmpROI.getName()+" is of class: "+String.valueOf(tmpROI.getGroup()));
+		        	}
+		        }
+		    }
         }
 
         // new trying to get the scroll amount correctly:
@@ -10166,6 +10220,7 @@ public class Annotator_MainFrameNew extends PlugInFrame implements ActionListene
 						imWindow.addKeyListener(IJ.getInstance());
 						WindowManager.getCurrentImage().getCanvas().addMouseListener(new Runner("",imp));
 						WindowManager.getCurrentImage().getCanvas().addMouseWheelListener(new Runner("",imp));
+						WindowManager.getCurrentImage().getCanvas().addMouseMotionListener(new Runner("",imp));
 						WindowManager.getCurrentImage().getCanvas().addKeyListener(listener);
 
 
